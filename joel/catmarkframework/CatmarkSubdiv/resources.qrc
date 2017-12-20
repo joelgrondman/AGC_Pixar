@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/">
+        <file>shaders/fragshader.glsl</file>
+        <file>shaders/vertshader.glsl</file>
+        <file>shaders/tesselationevaluationshader.glsl</file>
+        <file>shaders/tesselationcontrolshader.glsl</file>
+        <file>shaders/vertshadertess.glsl</file>
+    </qresource>
+</RCC>
