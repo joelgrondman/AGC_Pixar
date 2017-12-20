@@ -2,5 +2,7 @@
     <qresource prefix="/">
         <file>shaders/fragshader.glsl</file>
         <file>shaders/vertshader.glsl</file>
+        <file>shaders/selectionFragshader.glsl</file>
+        <file>shaders/selectionVertex.glsl</file>
     </qresource>
 </RCC>

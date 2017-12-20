@@ -51,13 +51,15 @@ private:
   QMatrix3x3 normalMatrix;
 
   // Uniforms
-  GLint uniModelViewMatrix, uniProjectionMatrix, uniNormalMatrix;
-
+  GLint uniModelViewMatrix, uniProjectionMatrix, uniNormalMatrix,
+        uniSelModelViewMatrix, uniSelProjectionMatrix;
   // ---
 
-  QOpenGLShaderProgram* mainShaderProg;
+ QOpenGLShaderProgram* mainShaderProg,* selectionShader;
 
   GLuint meshVAO, meshCoordsBO, meshNormalsBO, meshIndexBO;
+  GLuint selectionVAO, selectionCoordsBO; // Storage for coordinates of selected edge or vertex
+
   unsigned int meshIBOSize;
 
   // ---
@@ -66,8 +68,15 @@ private:
   QVector<QVector3D> vertexNormals;
   QVector<unsigned int> polyIndices;
 
+  int selectedEdge;
+  Mesh* curDispMesh; // Pointer to the mesh which is currently displayed
+  QVector<QVector3D> selectedEdgePoints;
+
   void createShaderPrograms();
   void createBuffers();  
+
+  void updateSelectionBuffers();
+  void selectEdge(QVector4D nearpos, QVector4D farpos);
 
 private slots:
   void onMessageLogged( QOpenGLDebugMessage Message );
