@@ -26,6 +26,7 @@ public:
   float rotAngle;
 
   bool uniformUpdateRequired;
+  int sharpSubdivSteps = 0;
 
   void updateMatrices();
   void updateUniforms();

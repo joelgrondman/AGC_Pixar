@@ -94,19 +94,23 @@ void subdivideCatmullClark(Mesh* inputMesh, Mesh* subdivMesh) {
       subdivMesh->Faces[fIndex].side = &subdivMesh->HalfEdges[ 2*t ];
 
       // Target, Next, Prev, Twin, Poly, Index
+      // sharpness is currently not decreased, which resulted in least anomalies
+      // (no direct entry in paper that describes sharpness when adding edges due to face dubdivision)
       subdivMesh->HalfEdges.append(HalfEdge( &subdivMesh->Vertices[k],
                                              nullptr,
                                              &subdivMesh->HalfEdges[ 2*t ],
                                    nullptr,
                                    &subdivMesh->Faces[fIndex],
-                                   hIndex ));
+                                   hIndex,
+                                   std::fmax(subdivMesh->HalfEdges[ 2*t ].sharpness, 0.0)));
 
       subdivMesh->HalfEdges.append(HalfEdge( nullptr,
                                              &subdivMesh->HalfEdges[2*s+1],
                                    &subdivMesh->HalfEdges[hIndex],
                                    nullptr,
                                    &subdivMesh->Faces[fIndex],
-                                   hIndex+1 ));
+                                   hIndex+1,
+                                   std::fmax(subdivMesh->HalfEdges[hIndex].sharpness, 0.0)));
 
       subdivMesh->HalfEdges[hIndex].next = &subdivMesh->HalfEdges[hIndex+1];
       subdivMesh->HalfEdges[hIndex+1].target = subdivMesh->HalfEdges[hIndex+1].next->twin->target;
@@ -172,27 +176,85 @@ QVector3D vertexPoint(HalfEdge* firstEdge, Mesh* subdivMesh) {
   sumFacePts = QVector3D();
   currentEdge = firstEdge;
 
-  // Catmull-Clark (also supporting initial meshes containing n-gons)
-  if (HalfEdge* boundaryEdge = vertOnBoundary(currentVertex)) {
-    if (boundaryEdge->twin->target->val == 2) {
-      // Interpolate corners
-      vertexPt = boundaryEdge->twin->target->coords;
+  //count number of incident sharp edges
+  HalfEdge * sharpEdge = currentEdge;
+  int NsharpEdges = 0;
+  float sharpAvg = 0;
+  for (k=0; k<n; k++) {
+    if (currentEdge->sharpness > 0.0) {
+        NsharpEdges++;
+        sharpAvg += currentEdge->sharpness;
     }
-    else {
-      vertexPt  = 1.0 * boundaryEdge->target->coords;
-      vertexPt += 6.0 * boundaryEdge->twin->target->coords;
-      vertexPt += 1.0 * boundaryEdge->prev->twin->target->coords;
-      vertexPt /= 8.0;
-    }
+    sharpEdge = sharpEdge->prev->twin;
   }
-  else {
-    for (k=0; k<n; k++) {
-      sumStarPts += currentEdge->target->coords;
-      sumFacePts += subdivMesh->Vertices[currentEdge->polygon->index].coords;
-      currentEdge = currentEdge->prev->twin;
-    }
+  sharpAvg /= NsharpEdges;
+  // one or no sharp edges
+  if (NsharpEdges <= 1) {
+      // Catmull-Clark (also supporting initial meshes containing n-gons)
+      if (HalfEdge* boundaryEdge = vertOnBoundary(currentVertex)) {
+        if (boundaryEdge->twin->target->val == 2) {
+          // Interpolate corners
+          vertexPt = boundaryEdge->twin->target->coords;
+        } else {
+          vertexPt  = 1.0 * boundaryEdge->target->coords;
+          vertexPt += 6.0 * boundaryEdge->twin->target->coords;
+          vertexPt += 1.0 * boundaryEdge->prev->twin->target->coords;
+          vertexPt /= 8.0;
+        }
+      } else {
+        for (k=0; k<n; k++) {
+          sumStarPts += currentEdge->target->coords;
+          sumFacePts += subdivMesh->Vertices[currentEdge->polygon->index].coords;
+          currentEdge = currentEdge->prev->twin;
+        }
 
-    vertexPt = ((n-2)*currentVertex->coords + sumStarPts/n + sumFacePts/n)/n;
+        vertexPt = ((n-2)*currentVertex->coords + sumStarPts/n + sumFacePts/n)/n;
+      }
+      // three or more sharp edges
+  } else if (NsharpEdges >= 3){
+      if (sharpAvg < 1.0) {
+    // using interpolation (not the method used by paper) TODO
+      if (HalfEdge* boundaryEdge = vertOnBoundary(currentVertex)) {
+        if (boundaryEdge->twin->target->val == 2) {
+          // Interpolate corners
+          vertexPt = boundaryEdge->twin->target->coords;
+        } else {
+          vertexPt  = 1.0 * boundaryEdge->target->coords;
+          vertexPt += 6.0 * boundaryEdge->twin->target->coords;
+          vertexPt += 1.0 * boundaryEdge->prev->twin->target->coords;
+          vertexPt /= 8.0;
+        }
+      } else {
+        for (k=0; k<n; k++) {
+          sumStarPts += currentEdge->target->coords;
+          sumFacePts += subdivMesh->Vertices[currentEdge->polygon->index].coords;
+          currentEdge = currentEdge->prev->twin;
+        }
+
+        vertexPt = ((n-2)*currentVertex->coords + sumStarPts/n + sumFacePts/n)/n;
+      }
+        vertexPt = (1.0 - sharpAvg) * vertexPt + sharpAvg * currentVertex->coords;
+      } else {
+        vertexPt = currentVertex->coords;
+      }
+    // two sharp edges
+  } else {
+    // integer sharpness step
+    if (sharpAvg >= 1.0) {
+      vertexPt  = 1.0 * currentEdge->target->coords;
+      vertexPt += 6.0 * currentVertex->coords;
+      vertexPt += 1.0 * currentEdge->prev->twin->target->coords;
+      vertexPt /= 8.0;
+    // semi-sharp step
+    } else {
+      // sharp step
+      vertexPt  = 1.0 * currentEdge->target->coords;
+      vertexPt += 6.0 * currentVertex->coords;
+      vertexPt += 1.0 * currentEdge->prev->twin->target->coords;
+      vertexPt /= 8.0;
+      // not sure if by corner mask they mean the sharp corner rule TODO
+      vertexPt = sharpAvg * vertexPt + (1.0 - sharpAvg) * currentVertex->coords;
+    }
   }
 
   return vertexPt;
@@ -202,23 +264,57 @@ QVector3D vertexPoint(HalfEdge* firstEdge, Mesh* subdivMesh) {
 QVector3D edgePoint(HalfEdge* firstEdge, Mesh* subdivMesh) {
   QVector3D EdgePt;
   HalfEdge* currentEdge;
-
   EdgePt = QVector3D();
   currentEdge = firstEdge;
 
-  // Catmull-Clark (also supporting initial meshes containing n-gons)
-  if (!currentEdge->polygon || !currentEdge->twin->polygon) {
-    EdgePt  = 4.0 * currentEdge->target->coords;
-    EdgePt += 4.0 * currentEdge->twin->target->coords;
-    EdgePt /= 8.0;
+  //smooth edge rule
+  if (currentEdge->sharpness <= 0.0) {
+      // Catmull-Clark (also supporting initial meshes containing n-gons)
+      if (!currentEdge->polygon || !currentEdge->twin->polygon) {
+        EdgePt  = 4.0 * currentEdge->target->coords;
+        EdgePt += 4.0 * currentEdge->twin->target->coords;
+        EdgePt /= 8.0;
+      }
+      else {
+        EdgePt  = currentEdge->target->coords;
+        EdgePt += currentEdge->twin->target->coords;
+        EdgePt += subdivMesh->Vertices[currentEdge->polygon->index].coords;
+        EdgePt += subdivMesh->Vertices[currentEdge->twin->polygon->index].coords;
+        EdgePt /= 4.0;
+      }
+  // sharp edge rule
+  } else if (currentEdge->sharpness >= 1.0) {
+      EdgePt  = 1.0 * currentEdge->target->coords;
+      EdgePt += 1.0 * currentEdge->twin->target->coords;
+      EdgePt /= 2.0;
+  // semi sharp edge rule
+  } else {
+      // smooth part
+      if (!currentEdge->polygon || !currentEdge->twin->polygon) {
+        EdgePt  = 4.0 * currentEdge->target->coords;
+        EdgePt += 4.0 * currentEdge->twin->target->coords;
+        EdgePt /= 8.0;
+      }
+      else {
+        EdgePt  = currentEdge->target->coords;
+        EdgePt += currentEdge->twin->target->coords;
+        EdgePt += subdivMesh->Vertices[currentEdge->polygon->index].coords;
+        EdgePt += subdivMesh->Vertices[currentEdge->twin->polygon->index].coords;
+        EdgePt /= 4.0;
+      }
+
+      // sharp part
+      QVector3D EdgePtsharp = QVector3D();
+      EdgePtsharp  = 1.0 * currentEdge->target->coords;
+      EdgePtsharp += 1.0 * currentEdge->twin->target->coords;
+      EdgePtsharp /= 2.0;
+
+      //interpolate
+
+      EdgePt = (1.0 - currentEdge->sharpness) * EdgePt
+              + currentEdge->sharpness * EdgePtsharp;
   }
-  else {
-    EdgePt  = currentEdge->target->coords;
-    EdgePt += currentEdge->twin->target->coords;
-    EdgePt += subdivMesh->Vertices[currentEdge->polygon->index].coords;
-    EdgePt += subdivMesh->Vertices[currentEdge->twin->polygon->index].coords;
-    EdgePt /= 4.0;
-  }
+
 
   return EdgePt;
 
@@ -325,8 +421,13 @@ void splitHalfEdges(Mesh* inputMesh, Mesh* subdivMesh, unsigned int numHalfEdges
         }
       }
     }
+    // adjust sharpness
+    //TODO
+    subdivMesh->HalfEdges[2*k].sharpness =
+            std::fmax((3.0* currentEdge->sharpness + currentEdge->prev->sharpness)/4.0 - 1.0,0.0);
+    subdivMesh->HalfEdges[2*k + 1].sharpness =
+            std::fmax((3.0* currentEdge->sharpness + currentEdge->next->sharpness)/4.0 - 1.0,0.0);
   }
-
   // Note that Next, Prev and Poly are not yet assigned at this point.
 
 }

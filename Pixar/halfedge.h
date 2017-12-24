@@ -14,7 +14,7 @@ public:
   HalfEdge* twin;
   Face* polygon;
   unsigned int index;
-  unsigned short sharpness;
+  float sharpness;
 
   // Inline constructors
 
@@ -28,7 +28,7 @@ public:
     sharpness = 0;
   }
 
-  HalfEdge(Vertex* htarget, HalfEdge* hnext, HalfEdge* hprev, HalfEdge* htwin, Face* hpolygon, unsigned int hindex, float hsharpness=0) {
+  HalfEdge(Vertex* htarget, HalfEdge* hnext, HalfEdge* hprev, HalfEdge* htwin, Face* hpolygon, unsigned int hindex, float hsharpness=0.0) {
     target = htarget;
     next = hnext;
     prev = hprev;

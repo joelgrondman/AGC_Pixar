@@ -22,7 +22,7 @@ public:
 
   //changed into a matrix of meshes, first element indicates
   // number of sharp subdivisions and second number of catmull clark subdivs
-  QVector<QVector<Mesh>> Meshes;
+  QVector<Mesh> Meshes;
   void importOBJ();
 
 private slots:
