@@ -102,14 +102,12 @@ void MainView::createBuffers() {
 
 }
 
-void MainView::updateMeshBuffers(Mesh* currentMesh) {
+void MainView::updateMeshBuffers(Mesh* currentMesh, Mesh* orgMesh) {
 
     qDebug() << ".. updateBuffers";
 
     curDispMesh = currentMesh;
-    if(!origMesh){
-        origMesh = currentMesh;
-    }
+    origMesh = orgMesh;
 
     unsigned int k;
     unsigned short n, m;
@@ -310,6 +308,9 @@ void MainView::renderMesh() {
 // ---
 
 void MainView::updateSelectionBuffers() {
+
+    selectionSharpness.clear();
+    controlMeshLines.clear();
 
     for(int i = 0;i < origMesh->HalfEdges.size();i++){
 

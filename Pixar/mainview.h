@@ -33,7 +33,7 @@ public:
 
   void updateMatrices();
   void updateUniforms();
-  void updateMeshBuffers(Mesh* currentMesh);
+  void updateMeshBuffers(Mesh* currentMesh, Mesh* orgMesh);
   void updateSelectionBuffers();
   QGroupBox* selectionUIBox;
   QDoubleSpinBox* selectionUIValue;

@@ -298,6 +298,9 @@ QGroupBox::title {
         <property name="decimals">
          <number>5</number>
         </property>
+        <property name="singleStep">
+         <double>0.100000000000000</double>
+        </property>
        </widget>
        <widget class="QLabel" name="label">
         <property name="geometry">

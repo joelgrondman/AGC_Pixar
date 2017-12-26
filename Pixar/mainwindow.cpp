@@ -25,7 +25,7 @@ void MainWindow::importOBJ() {
   Meshes.squeeze();
   Meshes.append(Mesh(&newModel));
 
-  ui->MainDisplay->updateMeshBuffers( &Meshes[0] );
+  ui->MainDisplay->updateMeshBuffers( &Meshes[0],&Meshes[0] );
   ui->MainDisplay->updateSelectionBuffers();
   ui->MainDisplay->modelLoaded = true;
 
@@ -51,7 +51,7 @@ void MainWindow::on_subdivSteps_valueChanged(int value) {
     Meshes.append(Mesh());
     subdivideCatmullClark(&Meshes[k-1], &Meshes[k]);
   }
-  ui->MainDisplay->updateMeshBuffers( &Meshes[value] );
+  ui->MainDisplay->updateMeshBuffers( &Meshes[value], &Meshes[0] );
 }
 
 void MainWindow::on_edgeSharpnesses_valueChanged(double value)
@@ -83,6 +83,8 @@ void MainWindow::on_edgeSharpness_valueChanged(double value){
      Meshes[0].HalfEdges[selectedEdge].twin->sharpness = value;
 
      Meshes.resize(1);
+     Meshes.squeeze();
+
      unsigned short smoothSteps = ui->subdivSteps->value();
      on_subdivSteps_valueChanged(smoothSteps);
 }
