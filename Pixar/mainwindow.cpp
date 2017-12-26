@@ -35,7 +35,7 @@ void MainWindow::importOBJ() {
 void MainWindow::on_ImportOBJ_clicked() {
   importOBJ();
   ui->ImportOBJ->setEnabled(false);
-  ui->SubdivSteps->setEnabled(true);
+  ui->subdivSteps->setEnabled(true);
 }
 
 void MainWindow::on_RotationDial_valueChanged(int value) {
@@ -43,9 +43,9 @@ void MainWindow::on_RotationDial_valueChanged(int value) {
   ui->MainDisplay->updateMatrices();
 }
 
-void MainWindow::on_SubdivSteps_valueChanged(int value) {
+void MainWindow::on_subdivSteps_valueChanged(int value) {
   unsigned short k;
-  unsigned short sharpSteps = ui->spinBox->value();
+  unsigned short sharpSteps = ui->edgeSharpness->value();
 
   for (k=Meshes.size(); k<value + 1; k++) {
     Meshes.append(Mesh());
@@ -54,19 +54,19 @@ void MainWindow::on_SubdivSteps_valueChanged(int value) {
   ui->MainDisplay->updateMeshBuffers( &Meshes[value] );
 }
 
-void MainWindow::on_spinBox_valueChanged(int value)
+void MainWindow::on_edgeSharpnesses_valueChanged(double value)
 {
 
-    unsigned short smoothSteps = ui->SubdivSteps->value();
+    unsigned short smoothSteps = ui->subdivSteps->value();
 
     Meshes.resize(1);
     Meshes.squeeze();
     for (int i = 0; i < Meshes[0].HalfEdges.size(); ++i) {
-        Meshes[0].HalfEdges[i].sharpness = value/10.0;
+        Meshes[0].HalfEdges[i].sharpness = value;
     }
 
     //call on this function to fill in the smooth steps (if needed)
-    on_SubdivSteps_valueChanged(smoothSteps);
+    on_subdivSteps_valueChanged(smoothSteps);
 
 
     //making ready for different sharp values everywhere
@@ -83,6 +83,24 @@ void MainWindow::on_edgeSharpness_valueChanged(double value){
      Meshes[0].HalfEdges[selectedEdge].twin->sharpness = value;
 
      Meshes.resize(1);
-     unsigned short smoothSteps = ui->SubdivSteps->value();
-     on_SubdivSteps_valueChanged(smoothSteps);
+     unsigned short smoothSteps = ui->subdivSteps->value();
+     on_subdivSteps_valueChanged(smoothSteps);
+}
+
+void MainWindow::on_dispControlMesh_toggled(bool checked)
+{
+    ui->MainDisplay->dispControlMesh = checked;
+    ui->MainDisplay->update();
+}
+
+void MainWindow::on_dispSubSurf_toggled(bool checked)
+{
+    ui->MainDisplay->dispSubdivSurface = checked;
+    ui->MainDisplay->update();
+}
+
+void MainWindow::on_renderMode_currentIndexChanged(int index)
+{
+    ui->MainDisplay->wireframeMode = index==0;
+    ui->MainDisplay->update();
 }

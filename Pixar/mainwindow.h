@@ -28,9 +28,15 @@ public:
 private slots:
   void on_ImportOBJ_clicked();
   void on_RotationDial_valueChanged(int value);
-  void on_SubdivSteps_valueChanged(int value);
+  void on_subdivSteps_valueChanged(int value);
+  void on_edgeSharpnesses_valueChanged(double value);
   void on_edgeSharpness_valueChanged(double value);
-  void on_spinBox_valueChanged(int value);
+
+  void on_dispControlMesh_toggled(bool checked);
+
+  void on_dispSubSurf_toggled(bool checked);
+
+  void on_renderMode_currentIndexChanged(int index);
 
 private:
   Ui::MainWindow *ui;

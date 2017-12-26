@@ -38,6 +38,8 @@ public:
   QGroupBox* selectionUIBox;
   QDoubleSpinBox* selectionUIValue;
   int selectedEdge;
+  bool dispControlMesh;
+  bool dispSubdivSurface;
 
 protected:
   void initializeGL();

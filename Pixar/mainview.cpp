@@ -10,6 +10,8 @@ MainView::MainView(QWidget *Parent) : QOpenGLWidget(Parent) {
     FoV = 60.0;
     selectedEdge = -1;
     origMesh = NULL;
+    dispControlMesh = true;
+    dispSubdivSurface = true;
 }
 
 MainView::~MainView() {
@@ -256,32 +258,30 @@ void MainView::resizeGL(int newWidth, int newHeight) {
 }
 
 void MainView::paintGL() {
-
     if (modelLoaded) {
+        if(dispSubdivSurface){
+            glClearColor(0.0, 0.0, 0.0, 1.0);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glClearColor(0.0, 0.0, 0.0, 1.0);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            if (uniformUpdateRequired) {
+                updateUniforms();
+                uniformUpdateRequired = false;
+            }
 
-        if (uniformUpdateRequired) {
-            updateUniforms();
-            uniformUpdateRequired = false;
+            renderMesh();
         }
+        if(dispControlMesh){
+            // Draw control mesh and selected edges
 
-        renderMesh();
+            selectionShader->bind();
 
+            glBindVertexArray(selectionVAO);
 
-        // Draw control mesh and selected edges
+            glDrawArrays(GL_LINES, 0, controlMeshLines.size());
 
-        selectionShader->bind();
-
-        glBindVertexArray(selectionVAO);
-
-        glDrawArrays(GL_LINES, 0, controlMeshLines.size());
-
-        glBindVertexArray(0);
-        selectionShader->release();
-
-
+            glBindVertexArray(0);
+            selectionShader->release();
+        }
     }
 }
 
@@ -338,6 +338,7 @@ void MainView::updateSelectionBuffers() {
 }
 
 void MainView::selectEdge(QVector4D nearpos, QVector4D farpos){
+
     selectedEdge = -1;
     float min = std::numeric_limits<float>::infinity();
     QVector3D x1 = QVector3D(farpos[0],farpos[1],farpos[2]);
@@ -405,9 +406,8 @@ void MainView::mousePressEvent(QMouseEvent* event) {
         if(event->buttons() == Qt::LeftButton){
             // Left click to select an edge
             selectEdge(nearpos,farpos);
+            updateSelectionBuffers();
         }
-
-        updateSelectionBuffers();
     }
 }
 
