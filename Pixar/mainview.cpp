@@ -9,6 +9,7 @@ MainView::MainView(QWidget *Parent) : QOpenGLWidget(Parent) {
     rotAngle = 0.0;
     FoV = 60.0;
     selectedEdge = -1;
+    origMesh = NULL;
 }
 
 MainView::~MainView() {
@@ -20,6 +21,8 @@ MainView::~MainView() {
     glDeleteVertexArrays(1, &meshVAO);
 
     glDeleteBuffers(1, &selectionCoordsBO);
+    glDeleteBuffers(1, &selectionSharpnessBO);
+
     glDeleteVertexArrays(1, &selectionVAO);
 
     debugLogger->stopLogging();
@@ -53,7 +56,6 @@ void MainView::createShaderPrograms() {
 
     uniSelModelViewMatrix = glGetUniformLocation(selectionShader->programId(), "modelviewmatrix");
     uniSelProjectionMatrix = glGetUniformLocation(selectionShader->programId(), "projectionmatrix");
-
 }
 
 void MainView::createBuffers() {
@@ -89,6 +91,11 @@ void MainView::createBuffers() {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
+    glGenBuffers(1, &selectionSharpnessBO);
+    glBindBuffer(GL_ARRAY_BUFFER, selectionSharpnessBO);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 0, 0);
+
     glBindVertexArray(0);
 
 }
@@ -98,6 +105,9 @@ void MainView::updateMeshBuffers(Mesh* currentMesh) {
     qDebug() << ".. updateBuffers";
 
     curDispMesh = currentMesh;
+    if(!origMesh){
+        origMesh = currentMesh;
+    }
 
     unsigned int k;
     unsigned short n, m;
@@ -183,6 +193,7 @@ void MainView::updateUniforms() {
     glUniformMatrix4fv(uniSelModelViewMatrix, 1, false, modelViewMatrix.data());
     glUniformMatrix4fv(uniSelProjectionMatrix, 1, false, projectionMatrix.data());
 
+
     selectionShader->release();
 
     // Update mainShaderProg uniforms.
@@ -258,27 +269,24 @@ void MainView::paintGL() {
 
         renderMesh();
 
-        // If an edge is selected.
-        if(selectedEdge > -1){
 
-            // Draw the selected point or edge on top of everything.
-            glClear(GL_DEPTH_BUFFER_BIT);
+        // Draw control mesh and selected edges
 
-            selectionShader->bind();
-            glBindVertexArray(selectionVAO);
+        selectionShader->bind();
 
-            // Highlight selected edge.
-            if (selectedEdge > -1 && selectedEdge < curDispMesh->HalfEdges.size()){
-                glDrawArrays(GL_LINES, 0, 2);
-            }
+        glBindVertexArray(selectionVAO);
 
-            glBindVertexArray(0);
-            selectionShader->release();
-        }
+        glDrawArrays(GL_LINES, 0, controlMeshLines.size());
+
+        glBindVertexArray(0);
+        selectionShader->release();
+
+
     }
 }
 
 // ---
+
 
 void MainView::renderMesh() {
     mainShaderProg->bind();
@@ -303,16 +311,28 @@ void MainView::renderMesh() {
 
 void MainView::updateSelectionBuffers() {
 
-    // Update the selected edge endpoints or vertex coordinates.
+    for(int i = 0;i < origMesh->HalfEdges.size();i++){
 
-    selectedEdgePoints.clear();
-    if(selectedEdge > -1 && selectedEdge < curDispMesh->HalfEdges.size()){
-        selectedEdgePoints.append(curDispMesh->HalfEdges[selectedEdge].target->coords);
-        selectedEdgePoints.append(curDispMesh->HalfEdges[selectedEdge].twin->target->coords);
+        if(origMesh->HalfEdges[i].index < origMesh->HalfEdges[i].twin->index){
+            if(origMesh->HalfEdges[i].index == selectedEdge || origMesh->HalfEdges[i].twin->index == selectedEdge){
+                selectionSharpness.append(-1);
+                selectionSharpness.append(-1);
+            }else {
+                selectionSharpness.append(origMesh->HalfEdges[i].sharpness);
+                selectionSharpness.append(origMesh->HalfEdges[i].sharpness);
+            }
+
+            controlMeshLines.append(origMesh->HalfEdges[i].target->coords);
+            controlMeshLines.append(origMesh->HalfEdges[i].twin->target->coords);
+        }
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, selectionCoordsBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(QVector3D)*selectedEdgePoints.size(), selectedEdgePoints.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(QVector3D)*controlMeshLines.size(), controlMeshLines.data(), GL_DYNAMIC_DRAW);
+
+
+    glBindBuffer(GL_ARRAY_BUFFER, selectionSharpnessBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*selectionSharpness.size(), selectionSharpness.data(), GL_DYNAMIC_DRAW);
 
     qDebug() << " → Updated selection buffers";
 }
@@ -324,11 +344,11 @@ void MainView::selectEdge(QVector4D nearpos, QVector4D farpos){
     QVector3D x2 = QVector3D(nearpos[0],nearpos[1],nearpos[2]);
     QVector3D direction = (x2-x1).normalized(); // Direction of the line L through the click positions when z = 1 and z = -1
 
-    for(int i = 0; i < curDispMesh->HalfEdges.size();i++){
+    for(int i = 0; i < origMesh->HalfEdges.size();i++){
         // Only process one of the two half edges
-        if(curDispMesh->HalfEdges[i].twin->index > curDispMesh->HalfEdges[i].index){
-            QVector3D edgep1 = (curDispMesh->HalfEdges[i].target->coords);
-            QVector3D edgep2 = (curDispMesh->HalfEdges[i].twin->target->coords);
+        if(origMesh->HalfEdges[i].twin->index > origMesh->HalfEdges[i].index){
+            QVector3D edgep1 = (origMesh->HalfEdges[i].target->coords);
+            QVector3D edgep2 = (origMesh->HalfEdges[i].twin->target->coords);
             // Compute sphere with center in middle of edge and through endpoints, only continue if ray intersects sphere
             QVector3D center = (edgep1+edgep2)/2;
             float radius = (center-edgep1).length();
@@ -351,6 +371,13 @@ void MainView::selectEdge(QVector4D nearpos, QVector4D farpos){
 
     if(selectedEdge > -1){
         qDebug() << "Selected edge with index " << selectedEdge << " (and/or it's twin).";
+
+        // show ui
+        selectionUIBox->show();
+        selectionUIValue->setValue(origMesh->HalfEdges[selectedEdge].sharpness);
+    }else{
+        // hide ui
+        selectionUIBox->hide();
     }
 }
 

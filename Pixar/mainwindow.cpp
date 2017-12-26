@@ -4,6 +4,11 @@
 MainWindow::MainWindow(QWidget *parent) :  QMainWindow(parent), ui(new Ui::MainWindow) {
   qDebug() << "✓✓ MainWindow constructor";
   ui->setupUi(this);
+
+  // Initiaize Ege selection UI elements
+  ui->MainDisplay->selectionUIBox = ui->edgeSharpnessBox;
+  ui->MainDisplay->selectionUIBox->hide();
+  ui->MainDisplay->selectionUIValue = ui->edgeSharpness;
 }
 
 MainWindow::~MainWindow() {
@@ -21,6 +26,7 @@ void MainWindow::importOBJ() {
   Meshes.append(Mesh(&newModel));
 
   ui->MainDisplay->updateMeshBuffers( &Meshes[0] );
+  ui->MainDisplay->updateSelectionBuffers();
   ui->MainDisplay->modelLoaded = true;
 
   ui->MainDisplay->update();
@@ -68,4 +74,15 @@ void MainWindow::on_spinBox_valueChanged(int value)
     // for additional smooth subdivision start from previous step, throw these away when sharpness changes
     // for the first sharp subdivisions create two subdivision meshes one floor, one ceil of local sharpness, interpolate at last step
 
+}
+
+void MainWindow::on_edgeSharpness_valueChanged(double value){
+    int selectedEdge = ui->MainDisplay->selectedEdge;
+
+     Meshes[0].HalfEdges[selectedEdge].sharpness = value;
+     Meshes[0].HalfEdges[selectedEdge].twin->sharpness = value;
+
+     Meshes.resize(1);
+     unsigned short smoothSteps = ui->SubdivSteps->value();
+     on_SubdivSteps_valueChanged(smoothSteps);
 }

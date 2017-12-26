@@ -10,6 +10,9 @@
 #include <QMouseEvent>
 #include "mesh.h"
 
+#include <QGroupBox>
+#include <QDoubleSpinBox>
+
 class MainView : public QOpenGLWidget, protected QOpenGLFunctions_4_1_Core {
 
   Q_OBJECT
@@ -31,6 +34,10 @@ public:
   void updateMatrices();
   void updateUniforms();
   void updateMeshBuffers(Mesh* currentMesh);
+  void updateSelectionBuffers();
+  QGroupBox* selectionUIBox;
+  QDoubleSpinBox* selectionUIValue;
+  int selectedEdge;
 
 protected:
   void initializeGL();
@@ -59,7 +66,7 @@ private:
  QOpenGLShaderProgram* mainShaderProg,* selectionShader;
 
   GLuint meshVAO, meshCoordsBO, meshNormalsBO, meshIndexBO;
-  GLuint selectionVAO, selectionCoordsBO; // Storage for coordinates of selected edge or vertex
+  GLuint selectionVAO, selectionCoordsBO,selectionSharpnessBO; // Storage for coordinates of selected edge or vertex
 
   unsigned int meshIBOSize;
 
@@ -69,14 +76,15 @@ private:
   QVector<QVector3D> vertexNormals;
   QVector<unsigned int> polyIndices;
 
-  int selectedEdge;
+  QVector<float> selectionSharpness;
+  QVector<QVector3D> controlMeshLines;
+  Mesh* origMesh; // Pointer to the control mesh
   Mesh* curDispMesh; // Pointer to the mesh which is currently displayed
-  QVector<QVector3D> selectedEdgePoints;
 
   void createShaderPrograms();
   void createBuffers();  
 
-  void updateSelectionBuffers();
+
   void selectEdge(QVector4D nearpos, QVector4D farpos);
 
 private slots:

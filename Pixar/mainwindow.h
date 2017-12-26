@@ -29,7 +29,7 @@ private slots:
   void on_ImportOBJ_clicked();
   void on_RotationDial_valueChanged(int value);
   void on_SubdivSteps_valueChanged(int value);
-
+  void on_edgeSharpness_valueChanged(double value);
   void on_spinBox_valueChanged(int value);
 
 private:

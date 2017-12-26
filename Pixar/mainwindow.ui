@@ -156,6 +156,44 @@ QGroupBox::title {
         <string>Sharp Subdivision Steps</string>
        </property>
       </widget>
+      <widget class="QGroupBox" name="edgeSharpnessBox">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>410</y>
+         <width>181</width>
+         <height>91</height>
+        </rect>
+       </property>
+       <property name="title">
+        <string>Edge Sharpness</string>
+       </property>
+       <widget class="QDoubleSpinBox" name="edgeSharpness">
+        <property name="geometry">
+         <rect>
+          <x>20</x>
+          <y>40</y>
+          <width>141</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="decimals">
+         <number>5</number>
+        </property>
+        <property name="minimum">
+         <double>0.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.100000000000000</double>
+        </property>
+        <property name="value">
+         <double>0.000000000000000</double>
+        </property>
+       </widget>
+      </widget>
      </widget>
     </item>
     <item>
