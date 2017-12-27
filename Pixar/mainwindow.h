@@ -6,7 +6,6 @@
 #include <QFileDialog>
 #include "mesh.h"
 #include "meshtools.h"
-#include <QGraphicsScene>
 
 namespace Ui {
 class MainWindow;
@@ -39,6 +38,7 @@ private slots:
   void on_renderMode_currentIndexChanged(int index);
 
   void on_saveButton_pressed();
+
   void on_saveCrease_clicked();
 
   void on_addCrease_clicked();
