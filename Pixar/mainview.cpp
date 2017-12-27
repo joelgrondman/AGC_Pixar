@@ -8,10 +8,11 @@ MainView::MainView(QWidget *Parent) : QOpenGLWidget(Parent) {
 
     rotAngle = 0.0;
     FoV = 60.0;
-    selectedEdge = -1;
     origMesh = NULL;
     dispControlMesh = true;
     dispSubdivSurface = true;
+    creaseIsBeingSelected = false;
+    displayCreases = 0;
 }
 
 MainView::~MainView() {
@@ -58,6 +59,8 @@ void MainView::createShaderPrograms() {
 
     uniSelModelViewMatrix = glGetUniformLocation(selectionShader->programId(), "modelviewmatrix");
     uniSelProjectionMatrix = glGetUniformLocation(selectionShader->programId(), "projectionmatrix");
+    uniDisplayCreases = glGetUniformLocation(selectionShader->programId(), "displayCreases");
+
 }
 
 void MainView::createBuffers() {
@@ -192,6 +195,7 @@ void MainView::updateUniforms() {
 
     glUniformMatrix4fv(uniSelModelViewMatrix, 1, false, modelViewMatrix.data());
     glUniformMatrix4fv(uniSelProjectionMatrix, 1, false, projectionMatrix.data());
+    glUniform1i(uniDisplayCreases, displayCreases);
 
 
     selectionShader->release();
@@ -312,25 +316,49 @@ void MainView::updateSelectionBuffers() {
     selectionSharpness.clear();
     controlMeshLines.clear();
 
-    for(int i = 0;i < origMesh->HalfEdges.size();i++){
+    if(displayCreases){
+        for(int i = 0;i < creases.size();i++){
+            float color = (1023.0/creases.size())*i;
+            for(int c = 0;c < creases[i].size();c++){
+                int edge = creases[i][c];
 
-        if(origMesh->HalfEdges[i].index < origMesh->HalfEdges[i].twin->index){
-            if(origMesh->HalfEdges[i].index == selectedEdge || origMesh->HalfEdges[i].twin->index == selectedEdge){
-                selectionSharpness.append(-1);
-                selectionSharpness.append(-1);
-            }else {
-                selectionSharpness.append(origMesh->HalfEdges[i].sharpness);
-                selectionSharpness.append(origMesh->HalfEdges[i].sharpness);
+                selectionSharpness.append(color);
+                selectionSharpness.append(color);
+
+                controlMeshLines.append(origMesh->HalfEdges[edge].target->coords);
+                controlMeshLines.append(origMesh->HalfEdges[edge].twin->target->coords);
             }
+        }
+    }else{
+
+
+        for(int i = 0;i < origMesh->HalfEdges.size();i++){
+            if(origMesh->HalfEdges[i].index < origMesh->HalfEdges[i].twin->index){
+
+                bool found = false;
+                for(int c = 0; c < selectedEdges.size();c++){
+                    if(selectedEdges[c] == origMesh->HalfEdges[i].index ||  selectedEdges[c] == origMesh->HalfEdges[i].twin->index){
+                        found = true;
+                        break;
+                    };
+                }
+
+                if(found){
+                    selectionSharpness.append(-1);
+                    selectionSharpness.append(-1);
+                }else {
+                    selectionSharpness.append(origMesh->HalfEdges[i].sharpness);
+                    selectionSharpness.append(origMesh->HalfEdges[i].sharpness);
+                }
 
             controlMeshLines.append(origMesh->HalfEdges[i].target->coords);
             controlMeshLines.append(origMesh->HalfEdges[i].twin->target->coords);
         }
     }
+    }
 
     glBindBuffer(GL_ARRAY_BUFFER, selectionCoordsBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(QVector3D)*controlMeshLines.size(), controlMeshLines.data(), GL_DYNAMIC_DRAW);
-
 
     glBindBuffer(GL_ARRAY_BUFFER, selectionSharpnessBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(float)*selectionSharpness.size(), selectionSharpness.data(), GL_DYNAMIC_DRAW);
@@ -340,7 +368,7 @@ void MainView::updateSelectionBuffers() {
 
 void MainView::selectEdge(QVector4D nearpos, QVector4D farpos){
 
-    selectedEdge = -1;
+    int selectedEdge = -1;
     float min = std::numeric_limits<float>::infinity();
     QVector3D x1 = QVector3D(farpos[0],farpos[1],farpos[2]);
     QVector3D x2 = QVector3D(nearpos[0],nearpos[1],nearpos[2]);
@@ -371,15 +399,23 @@ void MainView::selectEdge(QVector4D nearpos, QVector4D farpos){
     uniformUpdateRequired = true;
     update();
 
-    if(selectedEdge > -1){
-        qDebug() << "Selected edge with index " << selectedEdge << " (and/or it's twin).";
+    // If "add crease" was pressed, add to crease, otherwise edit sharpness ui is shown
 
-        // show ui
-        selectionUIBox->show();
-        selectionUIValue->setValue(origMesh->HalfEdges[selectedEdge].sharpness);
+    if(creaseIsBeingSelected){
+        if(selectedEdge > -1){
+            selectedEdges.append(selectedEdge);
+        }
     }else{
-        // hide ui
-        selectionUIBox->hide();
+        selectedEdges.clear();
+        if(selectedEdge > -1){
+            // show ui
+            selectionUIBox->show();
+            selectionUIValue->setValue(origMesh->HalfEdges[selectedEdge].sharpness);
+            selectedEdges.append(selectedEdge);
+        }else{
+            // hide ui
+            selectionUIBox->hide();
+        }
     }
 }
 

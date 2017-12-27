@@ -2,56 +2,59 @@
 #include "ui_mainwindow.h"
 
 MainWindow::MainWindow(QWidget *parent) :  QMainWindow(parent), ui(new Ui::MainWindow) {
-  qDebug() << "✓✓ MainWindow constructor";
-  ui->setupUi(this);
+    qDebug() << "✓✓ MainWindow constructor";
+    ui->setupUi(this);
 
-  // Initiaize Ege selection UI elements
-  ui->MainDisplay->selectionUIBox = ui->edgeSharpnessBox;
-  ui->MainDisplay->selectionUIBox->hide();
-  ui->MainDisplay->selectionUIValue = ui->edgeSharpness;
+    // Initiaize Ege selection UI elements
+    ui->MainDisplay->selectionUIBox = ui->edgeSharpnessBox;
+    ui->MainDisplay->selectionUIBox->hide();
+    ui->MainDisplay->selectionUIValue = ui->edgeSharpness;
+
+    ui->addCrease->show();
+    ui->saveCrease->hide();
 }
 
 MainWindow::~MainWindow() {
-  qDebug() << "✗✗ MainWindow destructor";
-  delete ui;
+    qDebug() << "✗✗ MainWindow destructor";
+    delete ui;
 
-  Meshes.clear();
-  Meshes.squeeze();
+    Meshes.clear();
+    Meshes.squeeze();
 }
 
 void MainWindow::importOBJ() {
-  OBJFile newModel = OBJFile(QFileDialog::getOpenFileName(this, "Import OBJ File", "models/", tr("Obj Files (*.obj)")));
-  Meshes.clear();
-  Meshes.squeeze();
-  Meshes.append(Mesh(&newModel));
+    OBJFile newModel = OBJFile(QFileDialog::getOpenFileName(this, "Import OBJ File", "models/", tr("Obj Files (*.obj)")));
+    Meshes.clear();
+    Meshes.squeeze();
+    Meshes.append(Mesh(&newModel));
 
-  ui->MainDisplay->updateMeshBuffers( &Meshes[0],&Meshes[0] );
-  ui->MainDisplay->updateSelectionBuffers();
-  ui->MainDisplay->modelLoaded = true;
+    ui->MainDisplay->updateMeshBuffers( &Meshes[0],&Meshes[0] );
+    ui->MainDisplay->updateSelectionBuffers();
+    ui->MainDisplay->modelLoaded = true;
 
-  ui->MainDisplay->update();
+    ui->MainDisplay->update();
 }
 
 void MainWindow::on_ImportOBJ_clicked() {
-  importOBJ();
-  ui->ImportOBJ->setEnabled(false);
-  ui->subdivSteps->setEnabled(true);
+    importOBJ();
+    ui->ImportOBJ->setEnabled(false);
+    ui->subdivSteps->setEnabled(true);
 }
 
 void MainWindow::on_RotationDial_valueChanged(int value) {
-  ui->MainDisplay->rotAngle = value;
-  ui->MainDisplay->updateMatrices();
+    ui->MainDisplay->rotAngle = value;
+    ui->MainDisplay->updateMatrices();
 }
 
 void MainWindow::on_subdivSteps_valueChanged(int value) {
-  unsigned short k;
-  unsigned short sharpSteps = ui->edgeSharpness->value();
+    unsigned short k;
+    unsigned short sharpSteps = ui->edgeSharpness->value();
 
-  for (k=Meshes.size(); k<value + 1; k++) {
-    Meshes.append(Mesh());
-    subdivideCatmullClark(&Meshes[k-1], &Meshes[k]);
-  }
-  ui->MainDisplay->updateMeshBuffers( &Meshes[value], &Meshes[0] );
+    for (k=Meshes.size(); k<value + 1; k++) {
+        Meshes.append(Mesh());
+        subdivideCatmullClark(&Meshes[k-1], &Meshes[k]);
+    }
+    ui->MainDisplay->updateMeshBuffers( &Meshes[value], &Meshes[0] );
 }
 
 void MainWindow::on_edgeSharpnesses_valueChanged(double value)
@@ -77,16 +80,18 @@ void MainWindow::on_edgeSharpnesses_valueChanged(double value)
 }
 
 void MainWindow::on_edgeSharpness_valueChanged(double value){
-    int selectedEdge = ui->MainDisplay->selectedEdge;
+    if(ui->MainDisplay->selectedEdges.size() == 1){
+        unsigned int selectedEdge = ui->MainDisplay->selectedEdges[0];
 
-     Meshes[0].HalfEdges[selectedEdge].sharpness = value;
-     Meshes[0].HalfEdges[selectedEdge].twin->sharpness = value;
+        Meshes[0].HalfEdges[selectedEdge].sharpness = value;
+        Meshes[0].HalfEdges[selectedEdge].twin->sharpness = value;
 
-     Meshes.resize(1);
-     Meshes.squeeze();
+        Meshes.resize(1);
+        Meshes.squeeze();
 
-     unsigned short smoothSteps = ui->subdivSteps->value();
-     on_subdivSteps_valueChanged(smoothSteps);
+        unsigned short smoothSteps = ui->subdivSteps->value();
+        on_subdivSteps_valueChanged(smoothSteps);
+    }
 }
 
 void MainWindow::on_dispControlMesh_toggled(bool checked)
@@ -117,4 +122,35 @@ void MainWindow::on_saveButton_pressed()
                     );
 
     ui->MainDisplay->grabFramebuffer().save(imagePath);
+}
+
+void MainWindow::on_saveCrease_clicked()
+{
+    ui->addCrease->show();
+    ui->saveCrease->hide();
+    ui->MainDisplay->creaseIsBeingSelected = false;
+    ui->MainDisplay->creases.append(ui->MainDisplay->selectedEdges);
+    ui->MainDisplay->selectedEdges.clear();
+    ui->MainDisplay->updateSelectionBuffers();
+    ui->MainDisplay->update();
+}
+
+void MainWindow::on_addCrease_clicked()
+{
+    ui->MainDisplay->selectedEdges.clear();
+    ui->addCrease->hide();
+    ui->saveCrease->show();
+    ui->edgeSharpnessBox->hide();
+    ui->MainDisplay->selectedEdges.clear();
+    ui->MainDisplay->creaseIsBeingSelected = true;
+    ui->MainDisplay->updateSelectionBuffers();
+    ui->MainDisplay->update();
+}
+
+void MainWindow::on_displayCrease_toggled(bool checked)
+{
+    ui->MainDisplay->displayCreases = checked?1:0;
+    ui->MainDisplay->uniformUpdateRequired = true;
+    ui->MainDisplay->updateSelectionBuffers();
+    ui->MainDisplay->update();
 }
