@@ -106,3 +106,15 @@ void MainWindow::on_renderMode_currentIndexChanged(int index)
     ui->MainDisplay->wireframeMode = index==0;
     ui->MainDisplay->update();
 }
+
+void MainWindow::on_saveButton_pressed()
+{
+    QString imagePath = QFileDialog::getSaveFileName(
+                    this,
+                    tr("Save File"),
+                    "",
+                    tr("JPEG (*.jpg *.jpeg);;PNG (*.png)" )
+                    );
+
+    ui->MainDisplay->grabFramebuffer().save(imagePath);
+}

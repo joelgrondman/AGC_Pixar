@@ -249,9 +249,9 @@ QGroupBox::title {
        <property name="geometry">
         <rect>
          <x>20</x>
-         <y>420</y>
+         <y>470</y>
          <width>181</width>
-         <height>201</height>
+         <height>161</height>
         </rect>
        </property>
        <property name="title">
@@ -261,7 +261,7 @@ QGroupBox::title {
         <property name="geometry">
          <rect>
           <x>20</x>
-          <y>70</y>
+          <y>50</y>
           <width>141</width>
           <height>21</height>
          </rect>
@@ -271,7 +271,7 @@ QGroupBox::title {
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>40</y>
+          <y>20</y>
           <width>181</width>
           <height>20</height>
          </rect>
@@ -290,7 +290,7 @@ QGroupBox::title {
         <property name="geometry">
          <rect>
           <x>20</x>
-          <y>150</y>
+          <y>130</y>
           <width>141</width>
           <height>21</height>
          </rect>
@@ -306,7 +306,7 @@ QGroupBox::title {
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>120</y>
+          <y>100</y>
           <width>181</width>
           <height>20</height>
          </rect>
@@ -318,6 +318,19 @@ QGroupBox::title {
          <set>Qt::AlignCenter</set>
         </property>
        </widget>
+      </widget>
+      <widget class="QPushButton" name="saveButton">
+       <property name="geometry">
+        <rect>
+         <x>50</x>
+         <y>420</y>
+         <width>121</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Save</string>
+       </property>
       </widget>
      </widget>
     </item>

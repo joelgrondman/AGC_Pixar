@@ -6,6 +6,7 @@
 #include <QFileDialog>
 #include "mesh.h"
 #include "meshtools.h"
+#include <QGraphicsScene>
 
 namespace Ui {
 class MainWindow;
@@ -36,6 +37,8 @@ private slots:
   void on_dispSubSurf_toggled(bool checked);
 
   void on_renderMode_currentIndexChanged(int index);
+
+  void on_saveButton_pressed();
 
 private:
   Ui::MainWindow *ui;
