@@ -17,8 +17,7 @@ SOURCES += main.cpp\
     objfile.cpp \
     mesh.cpp \
     meshtools.cpp \
-    mainview.cpp \
-    sharpsubdividecatmullclark.cpp
+    mainview.cpp
 
 HEADERS  += mainwindow.h \
     mesh.h \
@@ -27,8 +26,7 @@ HEADERS  += mainwindow.h \
     vertex.h \
     halfedge.h \
     face.h \
-    mainview.h \
-    sharpsubdividecatmullclark.h
+    mainview.h
 
 FORMS    += mainwindow.ui
 

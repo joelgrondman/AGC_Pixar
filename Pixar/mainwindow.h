@@ -6,7 +6,6 @@
 #include <QFileDialog>
 #include "mesh.h"
 #include "meshtools.h"
-#include <sharpsubdividecatmullclark.h>
 
 namespace Ui {
 class MainWindow;
