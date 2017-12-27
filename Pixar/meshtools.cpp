@@ -188,7 +188,6 @@ QVector3D vertexPoint(HalfEdge* firstEdge, Mesh* subdivMesh) {
     sharpEdge = sharpEdge->prev->twin;
   }
   sharpAvg /= NsharpEdges;
-  qDebug() << NsharpEdges;
   // one or no sharp edges
   if (NsharpEdges <= 1) {
       // Catmull-Clark (also supporting initial meshes containing n-gons)
