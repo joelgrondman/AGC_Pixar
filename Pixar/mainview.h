@@ -37,9 +37,12 @@ public:
   void updateSelectionBuffers();
   QGroupBox* selectionUIBox;
   QDoubleSpinBox* selectionUIValue;
-  int selectedEdge;
+  QVector<unsigned int> selectedEdges;
+  QVector<QVector<unsigned int>> creases;
   bool dispControlMesh;
   bool dispSubdivSurface;
+  bool creaseIsBeingSelected;
+  int displayCreases;
 
 protected:
   void initializeGL();
@@ -62,7 +65,7 @@ private:
 
   // Uniforms
   GLint uniModelViewMatrix, uniProjectionMatrix, uniNormalMatrix,
-        uniSelModelViewMatrix, uniSelProjectionMatrix;
+        uniSelModelViewMatrix, uniSelProjectionMatrix,uniDisplayCreases;
   // ---
 
  QOpenGLShaderProgram* mainShaderProg,* selectionShader;

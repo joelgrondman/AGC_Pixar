@@ -37,6 +37,12 @@ private slots:
 
   void on_renderMode_currentIndexChanged(int index);
 
+  void on_saveCrease_clicked();
+
+  void on_addCrease_clicked();
+
+  void on_displayCrease_toggled(bool checked);
+
 private:
   Ui::MainWindow *ui;
 };
