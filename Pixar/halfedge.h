@@ -15,6 +15,7 @@ public:
   Face* polygon;
   unsigned int index;
   float sharpness;
+  int crease;
 
   // Inline constructors
 
@@ -26,6 +27,8 @@ public:
     polygon = nullptr;
     index = 0;
     sharpness = 0;
+    crease = -1;
+
   }
 
   HalfEdge(Vertex* htarget, HalfEdge* hnext, HalfEdge* hprev, HalfEdge* htwin, Face* hpolygon, unsigned int hindex, float hsharpness=0.0) {
@@ -36,6 +39,7 @@ public:
     polygon = hpolygon;
     index = hindex;
     sharpness = hsharpness;
+    crease = -1;
   }
 };
 
