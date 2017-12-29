@@ -101,16 +101,16 @@ void subdivideCatmullClark(Mesh* inputMesh, Mesh* subdivMesh) {
                                              &subdivMesh->HalfEdges[ 2*t ],
                                    nullptr,
                                    &subdivMesh->Faces[fIndex],
-                                   hIndex,
-                                   std::fmax(subdivMesh->HalfEdges[ 2*t ].sharpness, 0.0)));
+                                   hIndex
+                                   ));
 
       subdivMesh->HalfEdges.append(HalfEdge( nullptr,
                                              &subdivMesh->HalfEdges[2*s+1],
                                    &subdivMesh->HalfEdges[hIndex],
                                    nullptr,
                                    &subdivMesh->Faces[fIndex],
-                                   hIndex+1,
-                                   std::fmax(subdivMesh->HalfEdges[hIndex].sharpness, 0.0)));
+                                   hIndex+1
+                                   ));
 
       subdivMesh->HalfEdges[hIndex].next = &subdivMesh->HalfEdges[hIndex+1];
       subdivMesh->HalfEdges[hIndex+1].target = subdivMesh->HalfEdges[hIndex+1].next->twin->target;
@@ -179,7 +179,7 @@ QVector3D vertexPoint(HalfEdge* firstEdge, Mesh* subdivMesh) {
   //count number of incident sharp edges
   HalfEdge * sharpEdge = currentEdge;
   int NsharpEdges = 0;
-  float sharpAvg = 0;
+  float sharpAvg = 0.0;
   for (k=0; k<n; k++) {
     if (sharpEdge->sharpness > 0.0) {
         NsharpEdges++;
@@ -212,6 +212,7 @@ QVector3D vertexPoint(HalfEdge* firstEdge, Mesh* subdivMesh) {
       }
       // three or more sharp edges
   } else if (NsharpEdges >= 3){
+      //qDebug() << "three incident sharp edges!";
       if (sharpAvg < 1.0) {
         // using interpolation (same method as in paper)
         // first smooth coordinates
@@ -240,12 +241,13 @@ QVector3D vertexPoint(HalfEdge* firstEdge, Mesh* subdivMesh) {
       }
     // two sharp edges
   } else {
+      qDebug() << sharpAvg;
     // integer sharpness step
+    // check for same crease here
     if (sharpAvg >= 1.0) {
-    // integer sharpness step
       vertexPt = 6.0 * currentVertex->coords;
       sharpEdge = currentEdge;
-      // find the two sharp edges and add them
+      // find the two edges that are part of the crease and add them
       for (k=0; k<n; k++) {
         if (sharpEdge->sharpness > 0.0) {
           vertexPt += 1.0 * sharpEdge->target->coords;
@@ -453,19 +455,64 @@ void splitHalfEdges(Mesh* inputMesh, Mesh* subdivMesh, unsigned int numHalfEdges
         }
       }
     }
-    // adjust sharpness
-    /*
-    subdivMesh->HalfEdges[2*k].sharpness =
-            std::fmax((3.0* currentEdge->sharpness + currentEdge->prev->sharpness)/4.0 - 1.0,0.0);
-    subdivMesh->HalfEdges[2*k + 1].sharpness =
-            std::fmax((3.0* currentEdge->sharpness + currentEdge->next->sharpness)/4.0 - 1.0,0.0);
-    */
-    subdivMesh->HalfEdges[2*k].sharpness =
-            std::fmax(1.0* currentEdge->sharpness - 1.0,0.0);
-    subdivMesh->HalfEdges[2*k + 1].sharpness =
-            std::fmax(1.0* currentEdge->sharpness - 1.0,0.0);
 
-  }
+    // twins are assigned the same crease and sharpness value
+    if (k < m) {
+        // the current crease
+        int crease = currentEdge->crease;
+        if (crease >= 0) {
+            if (currentEdge->next->crease != crease && currentEdge->prev->crease != crease) {
+                currentEdge = currentEdge->twin;
+                qDebug() << "swapped";
+            }
+
+            // default value of sharpness is 0 if no neighbouring edge is found
+            float sharpnessA = 0, sharpnessB = 0;
+            HalfEdge *nEdge = currentEdge->target->out;
+            int val = currentEdge->target->val;
+
+            // find next edge in sequence
+            for (int eout = 0; eout < val; ++eout) {
+                if (nEdge->crease == crease && nEdge->twin->index != currentEdge->index)
+                    sharpnessB = nEdge->sharpness;
+                nEdge = nEdge->prev->twin;
+            }
+
+            // find previous edge in sequence
+            nEdge = currentEdge->twin->target->out;
+            val = currentEdge->twin->target->val;
+            for (int eout = 0; eout < val; ++eout) {
+                if (nEdge->twin->crease == crease && nEdge->index != currentEdge->index)
+                    sharpnessA = nEdge->sharpness;
+                nEdge = nEdge->prev->twin;
+            }
+
+            //Chaikins subdivision
+            subdivMesh->HalfEdges[2*k].sharpness =
+                    std::fmax((3.0* currentEdge->sharpness + sharpnessA)/4.0 - 1.0,0.0);
+            subdivMesh->HalfEdges[2*k + 1].sharpness =
+                    std::fmax((3.0* currentEdge->sharpness + sharpnessB)/4.0 - 1.0,0.0);
+
+            // create refined crease
+            subdivMesh->HalfEdges[2*k].crease = crease;
+            subdivMesh->HalfEdges[2*k + 1].crease = crease;
+
+        } else {
+            // normal subdivision, assume same sharpness everywhere
+            subdivMesh->HalfEdges[2*k].sharpness =
+                    std::fmax(currentEdge->sharpness - 1.0,0.0);
+            subdivMesh->HalfEdges[2*k + 1].sharpness =
+                    std::fmax(currentEdge->sharpness - 1.0,0.0);
+
+        }
+    } else {
+        subdivMesh->HalfEdges[2*k].crease = subdivMesh->HalfEdges[2*k].twin->crease;
+        subdivMesh->HalfEdges[2*k + 1].crease = subdivMesh->HalfEdges[2*k + 1].twin->crease;
+        subdivMesh->HalfEdges[2*k].sharpness = subdivMesh->HalfEdges[2*k].twin->sharpness;
+        subdivMesh->HalfEdges[2*k + 1].sharpness = subdivMesh->HalfEdges[2*k + 1].twin->sharpness;
+
+    }
   // Note that Next, Prev and Poly are not yet assigned at this point.
+  }
 
 }
