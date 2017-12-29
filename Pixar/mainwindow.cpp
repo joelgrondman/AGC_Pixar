@@ -28,7 +28,7 @@ void MainWindow::importOBJ() {
     Meshes.squeeze();
     Meshes.append(Mesh(&newModel));
 
-    ui->MainDisplay->updateMeshBuffers( &Meshes[0],&Meshes[0] );
+    ui->MainDisplay->updateMeshBuffers( &Meshes[0],&Meshes[0]);
     ui->MainDisplay->updateSelectionBuffers();
     ui->MainDisplay->modelLoaded = true;
 
@@ -54,7 +54,7 @@ void MainWindow::on_subdivSteps_valueChanged(int value) {
         Meshes.append(Mesh());
         subdivideCatmullClark(&Meshes[k-1], &Meshes[k]);
     }
-    ui->MainDisplay->updateMeshBuffers( &Meshes[value], &Meshes[0] );
+    ui->MainDisplay->updateMeshBuffers( &Meshes[value], &Meshes[0]);
 }
 
 void MainWindow::on_edgeSharpnesses_valueChanged(double value)
@@ -132,7 +132,20 @@ void MainWindow::on_saveCrease_clicked()
     ui->MainDisplay->creases.append(ui->MainDisplay->selectedEdges);
     ui->MainDisplay->selectedEdges.clear();
     ui->MainDisplay->updateSelectionBuffers();
-    ui->MainDisplay->update();
+
+    //when creases are updated mesh needs to be updated to incorporate finer creases
+    QVector<QVector<unsigned int>> creases = ui->MainDisplay->creases;
+    Meshes.resize(1);
+    Meshes.squeeze();
+    for (int c = 0; c < creases.size(); ++c) {
+        for (int e = 0; e < creases[c].size(); ++ e) {
+            Meshes[0].HalfEdges[creases[c][e]].crease = c;
+            Meshes[0].HalfEdges[creases[c][e]].twin->crease = c;
+        }
+    }
+
+    //call on this function to fill in the smooth steps (if needed)
+    on_subdivSteps_valueChanged(ui->subdivSteps->value());
 }
 
 void MainWindow::on_addCrease_clicked()
