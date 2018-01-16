@@ -431,6 +431,19 @@ QGroupBox::title {
          <string>Save crease</string>
         </property>
        </widget>
+       <widget class="QPushButton" name="removeCrease">
+        <property name="geometry">
+         <rect>
+          <x>20</x>
+          <y>100</y>
+          <width>131</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Remove crease</string>
+        </property>
+       </widget>
       </widget>
      </widget>
     </item>

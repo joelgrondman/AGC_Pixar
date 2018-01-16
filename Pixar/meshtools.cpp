@@ -45,7 +45,8 @@ void subdivideCatmullClark(Mesh* inputMesh, Mesh* subdivMesh) {
     subdivMesh->Vertices.append( Vertex(vertexPoint(inputMesh->Vertices[k].out, subdivMesh),
                                         nullptr,
                                         n,
-                                        vIndex) );
+                                        vIndex,
+                                        std::fmax(inputMesh->Vertices[k].sharpness - 1.0,0.0), inputMesh->Vertices[k].sharp) );
     vIndex++;
   }
 
@@ -164,7 +165,7 @@ void subdivideCatmullClark(Mesh* inputMesh, Mesh* subdivMesh) {
 QVector3D vertexPoint(HalfEdge* firstEdge, Mesh* subdivMesh) {
   unsigned short k, n;
   QVector3D sumStarPts, sumFacePts;
-  QVector3D vertexPt;
+  QVector3D vertexPt, sharpVertexPt;
   float stencilValue;
   HalfEdge* currentEdge;
   Vertex* currentVertex;
@@ -176,7 +177,7 @@ QVector3D vertexPoint(HalfEdge* firstEdge, Mesh* subdivMesh) {
   sumFacePts = QVector3D();
   currentEdge = firstEdge;
 
-  //count number of incident sharp edges
+  // count number of incident sharp edges
   HalfEdge * sharpEdge = currentEdge;
   int NsharpEdges = 0;
   float sharpAvg = 0.0;
@@ -187,13 +188,15 @@ QVector3D vertexPoint(HalfEdge* firstEdge, Mesh* subdivMesh) {
     }
     sharpEdge = sharpEdge->prev->twin;
   }
+  // average sharpness
   sharpAvg /= NsharpEdges;
-  // one or no sharp edges
-  if (NsharpEdges <= 1) {
-      // Catmull-Clark (also supporting initial meshes containing n-gons)
+
+  // compute smooth subdivision if sharpAvg is between 0 and 1
+  if (sharpAvg < 1.0 || NsharpEdges <= 1) {
+      // smooth coordinates
       if (HalfEdge* boundaryEdge = vertOnBoundary(currentVertex)) {
+        // Catmull-Clark boundary
         if (boundaryEdge->twin->target->val == 2) {
-          // Interpolate corners
           vertexPt = boundaryEdge->twin->target->coords;
         } else {
           vertexPt  = 1.0 * boundaryEdge->target->coords;
@@ -207,96 +210,37 @@ QVector3D vertexPoint(HalfEdge* firstEdge, Mesh* subdivMesh) {
           sumFacePts += subdivMesh->Vertices[currentEdge->polygon->index].coords;
           currentEdge = currentEdge->prev->twin;
         }
-
         vertexPt = ((n-2)*currentVertex->coords + sumStarPts/n + sumFacePts/n)/n;
       }
-      // three or more sharp edges
-  } else if (NsharpEdges >= 3){
-      //qDebug() << "three incident sharp edges!";
-      if (sharpAvg < 1.0) {
-        // using interpolation (same method as in paper)
-        // first smooth coordinates
-        if (HalfEdge* boundaryEdge = vertOnBoundary(currentVertex)) {
-          if (boundaryEdge->twin->target->val == 2) {
-            // Interpolate corners
-            vertexPt = boundaryEdge->twin->target->coords;
-          } else {
-            vertexPt  = 1.0 * boundaryEdge->target->coords;
-            vertexPt += 6.0 * boundaryEdge->twin->target->coords;
-            vertexPt += 1.0 * boundaryEdge->prev->twin->target->coords;
-            vertexPt /= 8.0;
-          }
-        } else {
-          for (k=0; k<n; k++) {
-            sumStarPts += currentEdge->target->coords;
-            sumFacePts += subdivMesh->Vertices[currentEdge->polygon->index].coords;
-            currentEdge = currentEdge->prev->twin;
-          }
-          vertexPt = ((n-2)*currentVertex->coords + sumStarPts/n + sumFacePts/n)/n;
-        }
-        vertexPt = (1.0 - sharpAvg) * vertexPt + sharpAvg * currentVertex->coords;
-      // corner rule, vertex doesn't move
-      } else {
-        vertexPt = currentVertex->coords;
-      }
-    // two sharp edges
-  } else {
-      qDebug() << sharpAvg;
-    // integer sharpness step
-    // check for same crease here
-    if (sharpAvg >= 1.0) {
-      vertexPt = 6.0 * currentVertex->coords;
-      sharpEdge = currentEdge;
-      // find the two edges that are part of the crease and add them
-      for (k=0; k<n; k++) {
-        if (sharpEdge->sharpness > 0.0) {
-          vertexPt += 1.0 * sharpEdge->target->coords;
-        }
-        sharpEdge = sharpEdge->prev->twin;
-      }
-      vertexPt /= 8.0;
-    // semi-sharp interpolation
-    } else {
-      // sharp step
-      vertexPt = 6.0 * currentVertex->coords;
-      sharpEdge = currentEdge;
-      // find the two sharp edges and add them
-      for (k=0; k<n; k++) {
-        if (sharpEdge->sharpness > 0.0) {
-          vertexPt += 1.0 * sharpEdge->target->coords;
-        }
-        sharpEdge = sharpEdge->prev->twin;
-      }
-      vertexPt /= 8.0;
-
-      // smooth coordinates
-      QVector3D smoothPt;
-      if (HalfEdge* boundaryEdge = vertOnBoundary(currentVertex)) {
-        if (boundaryEdge->twin->target->val == 2) {
-          // Interpolate corners
-          smoothPt = boundaryEdge->twin->target->coords;
-        } else {
-          smoothPt  = 1.0 * boundaryEdge->target->coords;
-          smoothPt += 6.0 * boundaryEdge->twin->target->coords;
-          smoothPt += 1.0 * boundaryEdge->prev->twin->target->coords;
-          smoothPt /= 8.0;
-        }
-      } else {
-        for (k=0; k<n; k++) {
-          sumStarPts += currentEdge->target->coords;
-          sumFacePts += subdivMesh->Vertices[currentEdge->polygon->index].coords;
-          currentEdge = currentEdge->prev->twin;
-        }
-        smoothPt = ((n-2)*currentVertex->coords + sumStarPts/n + sumFacePts/n)/n;
-      }
-
-      // not sure if by corner mask they mean the sharp corner rule TODO, leads to no anomalies
-      vertexPt = sharpAvg * vertexPt + (1.0 - sharpAvg) * smoothPt;
-    }
   }
 
-  return vertexPt;
+  // compute sharp subdivision if NsharpEdges > 1
+  if (NsharpEdges >= 3 || currentVertex->sharp) {
+      if (currentVertex->sharp) {
+          sharpAvg = currentVertex->sharpness;
+      }
+      sharpVertexPt = currentVertex->coords;
+  } else if (NsharpEdges == 2) {
+    sharpVertexPt = 6.0 * currentVertex->coords;
+    // find the two edges that are part of the crease and add them
+    for (k=0; k<n; k++) {
+      if (sharpEdge->sharpness > 0.0) {
+        sharpVertexPt += 1.0 * sharpEdge->target->coords;
+      }
+      sharpEdge = sharpEdge->prev->twin;
+    }
+    sharpVertexPt /= 8.0;
+  }
 
+  // interpolate between smooth and sharp subdiv
+  if (sharpAvg < 1 && NsharpEdges > 1)
+      return vertexPt*(1 - sharpAvg) + sharpAvg * sharpVertexPt;
+  // return sharp subdivision
+  else if (sharpAvg >= 1 && NsharpEdges > 1)
+      return sharpVertexPt;
+  // return smooth subdivision
+  else
+      return vertexPt;
 }
 
 QVector3D edgePoint(HalfEdge* firstEdge, Mesh* subdivMesh) {
@@ -456,7 +400,7 @@ void splitHalfEdges(Mesh* inputMesh, Mesh* subdivMesh, unsigned int numHalfEdges
       }
     }
 
-    // twins are assigned the same crease and sharpness value
+
     if (k < m) {
         // the current crease
         int crease = currentEdge->crease;
@@ -506,6 +450,7 @@ void splitHalfEdges(Mesh* inputMesh, Mesh* subdivMesh, unsigned int numHalfEdges
 
         }
     } else {
+        // twins are assigned the same crease and sharpness value
         subdivMesh->HalfEdges[2*k].crease = subdivMesh->HalfEdges[2*k].twin->crease;
         subdivMesh->HalfEdges[2*k + 1].crease = subdivMesh->HalfEdges[2*k + 1].twin->crease;
         subdivMesh->HalfEdges[2*k].sharpness = subdivMesh->HalfEdges[2*k].twin->sharpness;

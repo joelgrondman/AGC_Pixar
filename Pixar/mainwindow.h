@@ -45,6 +45,8 @@ private slots:
 
   void on_displayCrease_toggled(bool checked);
 
+  void on_removeCrease_clicked();
+
 private:
   Ui::MainWindow *ui;
 };

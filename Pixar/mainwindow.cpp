@@ -27,6 +27,8 @@ void MainWindow::importOBJ() {
     Meshes.clear();
     Meshes.squeeze();
     Meshes.append(Mesh(&newModel));
+    //Meshes[0].Vertices[0].sharpness = 9.0;
+    // Meshes[0].Vertices[0].sharp = true;
 
     ui->MainDisplay->updateMeshBuffers( &Meshes[0],&Meshes[0]);
     ui->MainDisplay->updateSelectionBuffers();
@@ -48,7 +50,6 @@ void MainWindow::on_RotationDial_valueChanged(int value) {
 
 void MainWindow::on_subdivSteps_valueChanged(int value) {
     unsigned short k;
-    unsigned short sharpSteps = ui->edgeSharpness->value();
 
     for (k=Meshes.size(); k<value + 1; k++) {
         Meshes.append(Mesh());
@@ -67,7 +68,7 @@ void MainWindow::on_edgeSharpnesses_valueChanged(double value)
     for (int i = 0; i < Meshes[0].HalfEdges.size(); ++i) {
         Meshes[0].HalfEdges[i].sharpness = value;
     }
-
+    qDebug() << Meshes[0].Vertices[0].sharpness;
     //call on this function to fill in the smooth steps (if needed)
     on_subdivSteps_valueChanged(smoothSteps);
 
@@ -124,28 +125,40 @@ void MainWindow::on_saveButton_pressed()
     ui->MainDisplay->grabFramebuffer().save(imagePath);
 }
 
+
+
 void MainWindow::on_saveCrease_clicked()
 {
     ui->addCrease->show();
     ui->saveCrease->hide();
     ui->MainDisplay->creaseIsBeingSelected = false;
-    ui->MainDisplay->creases.append(ui->MainDisplay->selectedEdges);
+
+    // find possible intersections with other creases
+    bool onCrease = false;
+    for (unsigned int edge:ui->MainDisplay->selectedEdges)
+        if (Meshes[0].HalfEdges[edge].crease >= 0)
+            onCrease = true;
+
+    // no intersection -> save new crease
+    if (!onCrease) {
+        ui->MainDisplay->creases.append(ui->MainDisplay->selectedEdges);
+
+        //when creases are updated mesh needs to be updated to incorporate finer creases
+        QVector<QVector<unsigned int>> creases = ui->MainDisplay->creases;
+        Meshes.resize(1);
+        Meshes.squeeze();
+        for (int c = 0; c < creases.size(); ++c) {
+            for (int e = 0; e < creases[c].size(); ++ e) {
+                Meshes[0].HalfEdges[creases[c][e]].crease = c;
+                Meshes[0].HalfEdges[creases[c][e]].twin->crease = c;
+            }
+        }
+        //call on this function to fill in the smooth steps (if needed)
+        on_subdivSteps_valueChanged(ui->subdivSteps->value());
+    }
     ui->MainDisplay->selectedEdges.clear();
     ui->MainDisplay->updateSelectionBuffers();
-
-    //when creases are updated mesh needs to be updated to incorporate finer creases
-    QVector<QVector<unsigned int>> creases = ui->MainDisplay->creases;
-    Meshes.resize(1);
-    Meshes.squeeze();
-    for (int c = 0; c < creases.size(); ++c) {
-        for (int e = 0; e < creases[c].size(); ++ e) {
-            Meshes[0].HalfEdges[creases[c][e]].crease = c;
-            Meshes[0].HalfEdges[creases[c][e]].twin->crease = c;
-        }
-    }
-
-    //call on this function to fill in the smooth steps (if needed)
-    on_subdivSteps_valueChanged(ui->subdivSteps->value());
+    ui->MainDisplay->update();
 }
 
 void MainWindow::on_addCrease_clicked()
@@ -166,4 +179,32 @@ void MainWindow::on_displayCrease_toggled(bool checked)
     ui->MainDisplay->uniformUpdateRequired = true;
     ui->MainDisplay->updateSelectionBuffers();
     ui->MainDisplay->update();
+}
+
+void MainWindow::on_removeCrease_clicked()
+{
+    QVector<QVector<unsigned int>> &creases = ui->MainDisplay->creases;
+    for (unsigned int e: ui->MainDisplay->selectedEdges)
+        if (Meshes[0].HalfEdges[e].crease >= 0) {
+            const QVector<unsigned int> &crease = creases[Meshes[0].HalfEdges[e].crease];
+            for (int e = 0; e < crease.size(); ++e) {
+                Meshes[0].HalfEdges[crease[e]].crease = -1;
+                Meshes[0].HalfEdges[crease[e]].twin->crease = -1;
+                Meshes[0].HalfEdges[crease[e]].sharpness = 0.0;
+                Meshes[0].HalfEdges[crease[e]].twin->sharpness = 0.0;
+            }
+            creases.remove(Meshes[0].HalfEdges[e].crease);
+            Meshes.resize(1);
+            Meshes.squeeze();
+            for (int c = 0; c < creases.size(); ++c) {
+                for (int e = 0; e < creases[c].size(); ++ e) {
+                    Meshes[0].HalfEdges[creases[c][e]].crease = c;
+                    Meshes[0].HalfEdges[creases[c][e]].twin->crease = c;
+                }
+            }
+        }
+
+    ui->MainDisplay->selectedEdges.clear();
+    ui->MainDisplay->updateSelectionBuffers();
+    on_subdivSteps_valueChanged(ui->subdivSteps->value());
 }

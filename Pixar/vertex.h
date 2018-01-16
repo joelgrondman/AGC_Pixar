@@ -14,6 +14,7 @@ public:
   unsigned short val;
   unsigned int index;
   unsigned short sharpness;
+  bool sharp;
 
   // Inline constructors
   Vertex() {
@@ -23,15 +24,17 @@ public:
     val = 0;
     index = 0;
     sharpness = 0;
+    sharp = false;
   }
 
-  Vertex(QVector3D vcoords, HalfEdge* vout, unsigned short vval, unsigned int vindex, float vsharpness = 0) {
+  Vertex(QVector3D vcoords, HalfEdge* vout, unsigned short vval, unsigned int vindex, float vsharpness = 0, bool vsharp = false) {
     //qDebug() << "QVector3D Vertex Constructor";
     coords = vcoords;
     out = vout;
     val = vval;
     index = vindex;
     sharpness = vsharpness;
+    sharp = vsharp;
   }
 };
 
