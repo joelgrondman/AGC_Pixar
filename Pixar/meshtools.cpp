@@ -442,7 +442,7 @@ void splitHalfEdges(Mesh* inputMesh, Mesh* subdivMesh, unsigned int numHalfEdges
             subdivMesh->HalfEdges[2*k + 1].crease = crease;
 
         } else {
-            // normal subdivision, assume same sharpness everywhere
+            // this subdivision is used when a global sharp value is applied
             subdivMesh->HalfEdges[2*k].sharpness =
                     std::fmax(currentEdge->sharpness - 1.0,0.0);
             subdivMesh->HalfEdges[2*k + 1].sharpness =

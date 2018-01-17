@@ -129,6 +129,9 @@ void MainWindow::on_saveButton_pressed()
 
 void MainWindow::on_saveCrease_clicked()
 {
+    // unique creaseId for each crease
+    static int creaseId = 0;
+
     ui->addCrease->show();
     ui->saveCrease->hide();
     ui->MainDisplay->creaseIsBeingSelected = false;
@@ -144,15 +147,17 @@ void MainWindow::on_saveCrease_clicked()
         ui->MainDisplay->creases.append(ui->MainDisplay->selectedEdges);
 
         //when creases are updated mesh needs to be updated to incorporate finer creases
-        QVector<QVector<unsigned int>> creases = ui->MainDisplay->creases;
+        const QVector<QVector<unsigned int>> &creases = ui->MainDisplay->creases;
         Meshes.resize(1);
         Meshes.squeeze();
-        for (int c = 0; c < creases.size(); ++c) {
-            for (int e = 0; e < creases[c].size(); ++ e) {
-                Meshes[0].HalfEdges[creases[c][e]].crease = c;
-                Meshes[0].HalfEdges[creases[c][e]].twin->crease = c;
-            }
+        int c = creases.size() - 1;
+        for (int e = 0; e < creases[c].size(); ++ e) {
+            Meshes[0].HalfEdges[creases[c][e]].crease = creaseId;
+            Meshes[0].HalfEdges[creases[c][e]].twin->crease = creaseId;
         }
+        //change creaseId for next added crease
+        creaseId++;
+
         //call on this function to fill in the smooth steps (if needed)
         on_subdivSteps_valueChanged(ui->subdivSteps->value());
     }
@@ -184,27 +189,37 @@ void MainWindow::on_displayCrease_toggled(bool checked)
 void MainWindow::on_removeCrease_clicked()
 {
     QVector<QVector<unsigned int>> &creases = ui->MainDisplay->creases;
-    for (unsigned int e: ui->MainDisplay->selectedEdges)
-        if (Meshes[0].HalfEdges[e].crease >= 0) {
-            const QVector<unsigned int> &crease = creases[Meshes[0].HalfEdges[e].crease];
-            for (int e = 0; e < crease.size(); ++e) {
-                Meshes[0].HalfEdges[crease[e]].crease = -1;
-                Meshes[0].HalfEdges[crease[e]].twin->crease = -1;
-                Meshes[0].HalfEdges[crease[e]].sharpness = 0.0;
-                Meshes[0].HalfEdges[crease[e]].twin->sharpness = 0.0;
-            }
-            creases.remove(Meshes[0].HalfEdges[e].crease);
-            Meshes.resize(1);
-            Meshes.squeeze();
+    bool removedCrease = false;
+    for (unsigned int e: ui->MainDisplay->selectedEdges) {
+        int creaseId = Meshes[0].HalfEdges[e].crease;
+        if (creaseId >= 0) {
+            removedCrease = true;
+            // find crease to which edge belongs to
             for (int c = 0; c < creases.size(); ++c) {
-                for (int e = 0; e < creases[c].size(); ++ e) {
-                    Meshes[0].HalfEdges[creases[c][e]].crease = c;
-                    Meshes[0].HalfEdges[creases[c][e]].twin->crease = c;
+                const QVector<unsigned int> &crease = creases[c];
+                if(Meshes[0].HalfEdges[crease[0]].crease == creaseId) {
+                    const QVector<unsigned int> &crease = creases[c];
+                    // reset edges on crease to 0 sharpness and no crease
+                    for (int ec = 0; ec < crease.size(); ++ec) {
+                        Meshes[0].HalfEdges[crease[ec]].crease = -1;
+                        Meshes[0].HalfEdges[crease[ec]].twin->crease = -1;
+                        Meshes[0].HalfEdges[crease[ec]].sharpness = 0.0;
+                        Meshes[0].HalfEdges[crease[ec]].twin->sharpness = 0.0;
+                    }
+                    // remove associated crease from crease list
+                    creases.remove(c);
+                    break;
                 }
             }
         }
+    }
+    // crease removed -> update mesh
+    if (removedCrease) {
+        Meshes.resize(1);
+        Meshes.squeeze();
+        on_subdivSteps_valueChanged(ui->subdivSteps->value());
+        ui->MainDisplay->update();
+        ui->MainDisplay->updateSelectionBuffers();
+    }
 
-    ui->MainDisplay->selectedEdges.clear();
-    ui->MainDisplay->updateSelectionBuffers();
-    on_subdivSteps_valueChanged(ui->subdivSteps->value());
 }
